@@ -42,8 +42,8 @@ Commands are inspired by windbg.  Currently:
 
 # Building
 
-   $ git submodule update --init
-   $ make   # (or gmake on some systems, eg. *BSD)
+    $ git submodule update --init
+    $ make   # (or gmake on some systems, eg. *BSD)
 
 For x86 you will need python2 on the path.
 
