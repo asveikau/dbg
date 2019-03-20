@@ -1,0 +1,9 @@
+[submodule "submodules/makefiles"]
+	path = submodules/makefiles
+	url = git@github.com:asveikau/makefiles.git
+[submodule "submodules/common"]
+	path = submodules/common
+	url = git@github.com:asveikau/common.git
+[submodule "submodules/udis86"]
+	path = submodules/udis86
+	url = git@github.com:vmt/udis86.git
