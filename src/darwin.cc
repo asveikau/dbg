@@ -942,8 +942,8 @@ struct DarwinProcess : public dbg::Process
                ERROR_SET(&err, errno, errno);
          }
          break;
-      case EXC_BREAKPOINT:
 #if defined (__amd64__) || defined(__i386__)
+      case EXC_BREAKPOINT:
          if (code[0] == 2)
          {
             uintptr_t flags = 0;
@@ -961,13 +961,65 @@ struct DarwinProcess : public dbg::Process
                task_suspend(task);
             }
          }
+         break;
 #else
-#error
+#warning Breakpoint not ported
 #endif
+      default:
+         if (EventCallbacks.Get())
+         {
+            char buf[32];
+
+            EventCallbacks->OnMessage(
+               &err,
+               "Got exception %s\n",
+               FormatException(buf, sizeof(buf), exception)
+            );
+         }
       }
 
    exit:
       return KERN_SUCCESS;
+   }
+
+   static const char *
+   FormatException(char *buf, size_t sz, exception_type_t exn)
+   {
+      auto name = ExceptionString(exn);
+
+      if (name)
+         snprintf(buf, sz, "%d (%s)", exn, name);
+      else
+         snprintf(buf, sz, "%d", exn);
+
+      return buf;
+   }
+
+   static const char *
+   ExceptionString(exception_type_t exn)
+   {
+#define CASE(X) case X: return #X
+      switch (exn)
+      {
+      CASE(EXC_ARITHMETIC);
+      CASE(EXC_BAD_ACCESS);
+      CASE(EXC_BAD_INSTRUCTION);
+      CASE(EXC_BREAKPOINT);
+      CASE(EXC_CORPSE_NOTIFY);
+      CASE(EXC_CRASH);
+      CASE(EXC_EMULATION);
+      CASE(EXC_GUARD);
+      CASE(EXC_MACF_MAX);
+      CASE(EXC_MACF_MIN);
+      CASE(EXC_MACH_SYSCALL);
+      CASE(EXC_RESOURCE);
+      CASE(EXC_RPC_ALERT);
+      CASE(EXC_SOFTWARE);
+      CASE(EXC_SOFT_SIGNAL);
+      CASE(EXC_SYSCALL);
+      default: return nullptr;
+      }
+#undef CASE
    }
 };
 
