@@ -23,6 +23,8 @@ Commands are inspired by windbg.  Currently:
 
 * .detach - Detach the target
 
+* t - Single instruction step
+
 * g - Go (continue execution)
 
 * k - Stack trace
@@ -37,7 +39,7 @@ Commands are inspired by windbg.  Currently:
 * Threads.
 * More CPU arches and operating systems:
     - Windows?  The APIs are pretty clean.
-    - ARM?
+    - ARM?  RISC-V?
     - Dead platforms?  (Solaris, SPARC, PowerPC?)
 
 # Building
