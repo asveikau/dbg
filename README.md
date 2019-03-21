@@ -31,6 +31,8 @@ Commands are inspired by windbg.  Currently:
 
 * r - Print or edit registers
 
+* u - Disassemble
+
 * q - Quit the process & debugger 
 
 # TODO
