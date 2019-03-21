@@ -13,6 +13,7 @@
 #include <sys/wait.h>
 
 #include <unistd.h>
+#include <fcntl.h>
 #include <signal.h>
 
 #include <inttypes.h>
@@ -27,6 +28,7 @@
 
 #include <common/c++/new.h>
 #include <common/misc.h>
+#include <common/logger.h>
 
 using dbg::addr_t;
 using dbg::reg_t;
@@ -46,6 +48,10 @@ typedef int ptrace_unit_t;
 #define USE_GETREGS
 #endif
 
+#if !defined(PT_IO) && defined(__linux__)
+#define USE_PROC_MEM
+#endif
+
 #if defined(__linux__) && !defined(__sparc__)
 #define GETREGS_REVERSED
 #endif
@@ -61,11 +67,23 @@ struct PtraceProcess : public dbg::Process
 #endif
    int pendingSignal;
    ptrace_op_t lastStep;
+#if defined(USE_PROC_MEM)
+   int memfd;
+#endif
 
    PtraceProcess()
       : pid(-1), pendingSignal(0), lastStep(PT_STEP)
    {
       MarkRegistersDirty();
+
+#if defined(USE_PROC_MEM)
+      memfd = -1;
+#endif
+   }
+
+   ~PtraceProcess()
+   {
+      ClearPid();
    }
 
 #if defined(PT_IO)
@@ -144,6 +162,29 @@ struct PtraceProcess : public dbg::Process
       default:
          ERROR_SET(err, unknown, "Unrecognized operation");
       }
+
+#if defined(USE_PROC_MEM)
+      if (memfd >= 0 && (op == PT_WRITE_D || op == PT_READ_D))
+      {
+         ssize_t r;
+
+         if (writing)
+            r = pwrite(memfd, buf, len, addr);
+         else
+         {
+            r = pread(memfd, buf, len, addr);
+            if (r >= 0 && r < len)
+            {
+               memset((char*)buf + r, 0, len - r);
+            }
+         }
+
+         if (r < 0)
+            ERROR_SET(err, errno, errno);
+
+         goto exit;
+      }
+#endif
 
       while (len)
       {
@@ -330,7 +371,7 @@ struct PtraceProcess : public dbg::Process
             ERROR_CHECK(err);
          }
 
-         pid = -1;
+         ClearPid();
       }
       else if (WIFSIGNALED(status))
       {
@@ -349,7 +390,7 @@ struct PtraceProcess : public dbg::Process
             ERROR_CHECK(err);
          }
 
-         pid = -1;
+         ClearPid();
       }
       else if (WIFSTOPPED(status))
       {
@@ -457,7 +498,8 @@ struct PtraceProcess : public dbg::Process
    {
       if (ptrace(PT_DETACH, pid, (caddr_t)1, pendingSignal))
          ERROR_SET(err, errno, errno);
-      pid = -1;
+
+      ClearPid();
    exit:;
    }
 
@@ -468,6 +510,7 @@ struct PtraceProcess : public dbg::Process
          goto exit;
       if (ptrace(PT_KILL, pid, (caddr_t)1, 0))
          ERROR_SET(err, errno, errno);
+      ClearPid();
    exit:;
    }
 
@@ -476,6 +519,29 @@ struct PtraceProcess : public dbg::Process
    {
       Wait(err);
       ERROR_CHECK(err);
+
+#if defined(USE_PROC_MEM)
+      {
+         char buf[1024];
+
+         snprintf(buf, sizeof(buf), "/proc/%" PID_T_FMT "/mem", pid);
+         memfd = open(buf, O_RDWR);
+         if (memfd < 0)
+         {
+            int r = errno;
+            error innerErr;
+            error_set_errno(&innerErr, r);
+            auto errString = error_get_string(&innerErr);
+            log_printf(
+               "Failed to open %s%s%s%s, will use slower ptrace interface",
+               buf,
+               errString ? " (" : "",
+               errString ? errString : "",
+               errString ? ")" : ""
+            );
+         }
+      }
+#endif
 
       DetectModules(err);
       ERROR_CHECK(err);
@@ -571,6 +637,20 @@ struct PtraceProcess : public dbg::Process
    }
 
 #endif
+
+   void
+   ClearPid()
+   {
+      pid = -1;
+
+#if defined(USE_PROC_MEM)
+      if (memfd >= 0)
+      {
+         close(memfd);
+         memfd = -1;
+      }
+#endif
+   }
 
    //
    // XXX the following is a total hackfest.
