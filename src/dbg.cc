@@ -101,6 +101,8 @@ dbg::Debugger::Detach(error *err)
 
    proc->Detach(err);
    ERROR_CHECK(err);
+
+   bps.bps.clear();
 exit:;
 }
 
