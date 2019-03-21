@@ -239,6 +239,10 @@ struct PtraceProcess : public dbg::Process
    int
    GetBlockSize()
    {
+#if defined(USE_PROC_MEM)
+      if (memfd >= 0)
+         return Process::GetBlockSize();
+#endif
       return sizeof(ptrace_unit_t);
    }
 
