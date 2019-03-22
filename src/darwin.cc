@@ -788,7 +788,9 @@ struct DarwinProcess : public dbg::Process
             }
          }
          else if (ev->filter == EVFILT_MACHPORT)
-            ProcessMachPort(err);
+         {
+            ProcessMachPort(true, err);
+         }
          ERROR_CHECK(err);
       }
 
@@ -803,11 +805,12 @@ struct DarwinProcess : public dbg::Process
       }
    }
 
-   void
-   ProcessMachPort(error *err)
+   bool
+   ProcessMachPort(bool block, error *err)
    {
+      bool recvd = false;
       currentProcess = this;
-      int timeout = MACH_MSG_TIMEOUT_NONE;
+      int timeout = block ? MACH_MSG_TIMEOUT_NONE : 1;
       const int bufsz = 128;
       union
       {
@@ -817,14 +820,14 @@ struct DarwinProcess : public dbg::Process
       mach_msg_return_t r = 0;
       r = mach_msg(
          &req.hdr,
-         MACH_RCV_MSG | (timeout == MACH_MSG_TIMEOUT_NONE ? 0 : MACH_RCV_TIMEOUT),
+         MACH_RCV_MSG | (block ? 0 : MACH_RCV_TIMEOUT),
          0,
          sizeof(req),
          server,
          timeout,
          MACH_PORT_NULL
       );
-      if (timeout != MACH_MSG_TIMEOUT_NONE && r == MACH_RCV_TIMED_OUT)
+      if (!block && r == MACH_RCV_TIMED_OUT)
          goto exit;
       if (r)
          ERROR_SET(err, unknown, "mach_msg failed");
@@ -839,8 +842,10 @@ struct DarwinProcess : public dbg::Process
          MACH_MSG_TIMEOUT_NONE,
          MACH_PORT_NULL
       );
+      recvd = true;
    exit:
       currentProcess = nullptr;
+      return recvd;
    }
 
    void
