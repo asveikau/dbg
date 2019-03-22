@@ -354,15 +354,26 @@ struct DarwinProcess : public dbg::Process
          error innerErr;
 
          oldExceptions.Restore(&innerErr);
+         error_clear(&innerErr);
 
          if (traced)
          {
-            ptrace(PT_DETACH, pid, 0, 0);
+            if (ptrace(PT_DETACH, pid, 0, 0))
+            {
+               error_set_errno(&innerErr, errno);
+               ERROR_LOG(&innerErr);
+               error_clear(&innerErr);
+            }
             traced = false;
          }
 
          if (suspendedHere)
             task_resume(task);
+
+         this->pid = pid;
+
+         PtraceDetach(&innerErr);
+         error_clear(&innerErr);
 
          this->pid = -1;
       }
@@ -856,12 +867,6 @@ struct DarwinProcess : public dbg::Process
       if (!task)
          goto exit;
 
-      if (traced)
-      {
-         ptrace(PT_DETACH, pid, 0, 0);
-         traced = false;
-      }
-
       oldExceptions.Restore(err);
       ERROR_CHECK(err);
 
@@ -869,7 +874,32 @@ struct DarwinProcess : public dbg::Process
       if (r)
          ERROR_SET(err, darwin, r);
 
+      PtraceDetach(err);
+      ERROR_CHECK(err);
+
       ClosePorts();
+   exit:;
+   }
+
+   void
+   PtraceDetach(error *err)
+   {
+      if (traced)
+      {
+         // We generally rely on Mach to suspend and resume,
+         // and it would seem that ptrace's view of the world
+         // is that the proc is still running, so step, continue,
+         // detach etc return EBUSY.  Kick it into a broken
+         // state with SIGTOP.
+         //
+         if (kill(pid, SIGSTOP))
+            ERROR_SET(err, errno, errno);
+         if (waitpid(pid, 0, 0) < 0)
+            ERROR_SET(err, errno, errno);
+         if (ptrace(PT_DETACH, pid, 0, 0))
+            ERROR_SET(err, errno, errno);
+         traced = false;
+      }
    exit:;
    }
 
