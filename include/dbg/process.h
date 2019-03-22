@@ -37,6 +37,9 @@ struct Process : public common::RefCountable
    virtual void
    Create(char *const* argv, error *err) = 0;
 
+   virtual bool
+   IsAttached() = 0;
+
    // A recommended block size for memory transfers.
    // In the traditional ptrace, this is going to be quite small,
    // eg. a machine word.

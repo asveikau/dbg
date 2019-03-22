@@ -552,6 +552,12 @@ struct PtraceProcess : public dbg::Process
    exit:;
    }
 
+   bool
+   IsAttached()
+   {
+      return pid >= 0;
+   }
+
    void
    Attach(const char *string, error *err)
    {

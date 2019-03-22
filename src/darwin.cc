@@ -186,6 +186,12 @@ struct DarwinProcess : public dbg::Process
       ClosePorts();
    }
 
+   bool
+   IsAttached()
+   {
+      return task && (pid >= 0);
+   }
+
    void
    ClosePorts()
    {
@@ -915,6 +921,7 @@ struct DarwinProcess : public dbg::Process
          goto exit;
       if (kill(pid, SIGTERM))
          ERROR_SET(err, errno, errno);
+      ClosePorts();
    exit:;
    }
 

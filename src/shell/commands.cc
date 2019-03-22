@@ -38,8 +38,11 @@ dbg::shell::RegisterCommands(CommandList &list, error *err)
       {
          st.dbg->Go(err);
          ERROR_CHECK(err);
-         Disassemble(st, 1, err);
-         ERROR_CHECK(err);
+         if (st.dbg->proc->IsAttached())
+         {
+            Disassemble(st, 1, err);
+            ERROR_CHECK(err);
+         }
       exit:;
       };
 
@@ -70,8 +73,11 @@ dbg::shell::RegisterCommands(CommandList &list, error *err)
       {
          st.dbg->Step(err);
          ERROR_CHECK(err);
-         Disassemble(st, 1, err);
-         ERROR_CHECK(err);
+         if (st.dbg->proc->IsAttached())
+         {
+            Disassemble(st, 1, err);
+            ERROR_CHECK(err);
+         }
       exit:;
       };
 
