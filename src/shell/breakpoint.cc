@@ -27,7 +27,8 @@ dbg::shell::RegisterBpCommands(CommandList &list, error *err)
          char buf[128];
          const char *addr = FormatAddr(st, bp->vaddr, buf, sizeof(buf), err);
          ERROR_CHECK(err);
-         printf("0x%.2x %s\n", idx++, addr);
+         st.dbg->proc->EventCallbacks->OnMessage(err, "0x%.2x %s\n", idx++, addr);
+         ERROR_CHECK(err);
       }
    exit:;
    };
