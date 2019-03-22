@@ -356,17 +356,6 @@ struct DarwinProcess : public dbg::Process
          oldExceptions.Restore(&innerErr);
          error_clear(&innerErr);
 
-         if (traced)
-         {
-            if (ptrace(PT_DETACH, pid, 0, 0))
-            {
-               error_set_errno(&innerErr, errno);
-               ERROR_LOG(&innerErr);
-               error_clear(&innerErr);
-            }
-            traced = false;
-         }
-
          if (suspendedHere)
             task_resume(task);
 
