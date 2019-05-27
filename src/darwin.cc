@@ -233,16 +233,16 @@ struct DarwinProcess : public dbg::Process
       sigset_t full;
       int r = 0;
 
-      if (posix_spawnattr_init(&sa))
-         ERROR_SET(err, errno, errno);
+      if ((r = posix_spawnattr_init(&sa)))
+         ERROR_SET(err, errno, r);
 
       attr = true;
 
 #if 0 // XXX need to figure out how to handle SIGTTIN/SIGTTOU before doing this
       flags |= POSIX_SPAWN_SETPGROUP;
 
-      if (posix_spawnattr_setpgroup(&sa, 0))
-         ERROR_SET(err, errno, errno);
+      if ((r = posix_spawnattr_setpgroup(&sa, 0)))
+         ERROR_SET(err, errno, r);
 #endif
 
       flags |= (POSIX_SPAWN_SETSIGDEF | POSIX_SPAWN_SETSIGMASK);
@@ -250,30 +250,29 @@ struct DarwinProcess : public dbg::Process
       sigemptyset(&empty);
       sigfillset(&full);
 
-      if (posix_spawnattr_setsigmask(&sa, &empty))
-         ERROR_SET(err, errno, errno);
+      if ((r = posix_spawnattr_setsigmask(&sa, &empty)))
+         ERROR_SET(err, errno, r);
 
-      if (posix_spawnattr_setsigdefault(&sa, &full))
-         ERROR_SET(err, errno, errno);
+      if ((r = posix_spawnattr_setsigdefault(&sa, &full)))
+         ERROR_SET(err, errno, r);
 
       flags |= POSIX_SPAWN_CLOEXEC_DEFAULT;
 
-      if (posix_spawn_file_actions_init(&fa))
-         ERROR_SET(err, errno, errno);
+      if ((r = posix_spawn_file_actions_init(&fa)))
+         ERROR_SET(err, errno, r);
 
       actions = true;
 
       for (int i=0; i<3; i++)
       {
-         if (posix_spawn_file_actions_adddup2(&fa, i, i))
-            ERROR_SET(err, errno, errno);
+         if ((r = posix_spawn_file_actions_adddup2(&fa, i, i)))
+            ERROR_SET(err, errno, r);
       }
 
-      if (posix_spawnattr_setflags(&sa, flags))
-         ERROR_SET(err, errno, errno);
+      if ((r = posix_spawnattr_setflags(&sa, flags)))
+         ERROR_SET(err, errno, r);
 
-      r = posix_spawnp(&pid, argv[0], &fa, &sa, argv, nullptr);
-      if (r)
+      if ((r = posix_spawnp(&pid, argv[0], &fa, &sa, argv, nullptr)))
          ERROR_SET(err, errno, r);
 
       Attach(pid, true, err);
