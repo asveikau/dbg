@@ -231,6 +231,7 @@ struct DarwinProcess : public dbg::Process
       int flags = POSIX_SPAWN_START_SUSPENDED;
       sigset_t empty;
       sigset_t full;
+      int r = 0;
 
       if (posix_spawnattr_init(&sa))
          ERROR_SET(err, errno, errno);
@@ -271,8 +272,9 @@ struct DarwinProcess : public dbg::Process
       if (posix_spawnattr_setflags(&sa, flags))
          ERROR_SET(err, errno, errno);
 
-      if (posix_spawnp(&pid, argv[0], &fa, &sa, argv, nullptr))
-         ERROR_SET(err, errno, errno);
+      r = posix_spawnp(&pid, argv[0], &fa, &sa, argv, nullptr);
+      if (r)
+         ERROR_SET(err, errno, r);
 
       Attach(pid, true, err);
       if (ERROR_FAILED(err))
